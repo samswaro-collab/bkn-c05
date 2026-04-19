@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GE Aerospace | BEAKON Sales Intelligence Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; color: #333; overflow-x: hidden; }
+        .topbar { background: #1a1a2e; color: white; padding: 12px 20px; display: flex; align-items: center; gap: 20px; border-bottom: 3px solid #0055b3; position: sticky; top: 0; z-index: 100; }
+        .logo-pill { background: white; color: #0055b3; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 13px; }
+        .topbar-title { flex: 1; font-size: 18px; font-weight: 600; }
+        .pill { background: rgba(255,255,255,0.15); padding: 5px 10px; border-radius: 15px; font-size: 12px; }
+        .pill-status { background: #4caf50; padding: 5px 10px; border-radius: 15px; font-size: 12px; }
+        .refresh-banner { background: #0055b3; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; position: sticky; top: 50px; z-index: 99; }
+        .container { display: flex; min-height: calc(100vh - 80px); }
+        .sidebar { width: 240px; background: #1a1a2e; color: white; padding: 20px 0; overflow-y: auto; height: calc(100vh - 80px); position: sticky; top: 80px; }
+        .sidebar-label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #999; padding: 0 15px; margin-bottom: 8px; letter-spacing: 0.5px; }
+        .sidebar-section { margin-bottom: 22px; }
+        .sidebar-item { padding: 10px 15px; cursor: pointer; font-size: 13px; transition: all 0.2s; border-left: 3px solid transparent; }
+        .sidebar-item:hover { background: rgba(0,85,179,0.15); }
+        .sidebar-item.active { background: rgba(0,85,179,0.25); border-left-color: #0055b3; font-weight: 600; }
+        .sidebar-acq-meta { font-size: 10px; color: #aaa; padding: 2px 15px 8px 15px; line-height: 1.4; }
+        .main-content { flex: 1; padding: 30px; overflow-y: auto; height: calc(100vh - 80px); }
+        .section { display: none; }
+        .section.active { display: block; }
+        .section-title { font-size: 24px; font-weight: 700; margin-bottom: 25px; color: #1a1a2e; }
+        .grid-2 { display: grid; grid-template-columns: repeat(2,1fr); gap: 20px; margin-bottom: 25px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; margin-bottom: 25px; }
+        .grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 20px; margin-bottom: 25px; }
+        .card { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-top: 3px solid #0055b3; }
+        .card-title { font-size: 13px; font-weight: 700; text-transform: uppercase; color: #666; margin-bottom: 15px; letter-spacing: 0.5px; }
+        .kpi { font-size: 32px; font-weight: 700; color: #1a1a2e; margin-bottom: 5px; }
+        .kpi-label { font-size: 12px; color: #999; }
+        .kpi-change { font-size: 12px; color: #4caf50; margin-top: 5px; }
+        .tag { display: inline-block; background: #f0f0f0; color: #333; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-right: 6px; margin-bottom: 6px; }
+        .tag-accent { background: rgba(0,85,179,0.12); color: #0055b3; }
+        .tag-hot { background: #fdecea; color: #c62828; }
+        .contact-card { background: white; border-radius: 6px; padding: 15px; border-left: 3px solid #0055b3; margin-bottom: 12px; font-size: 12px; }
+        .contact-name { font-weight: 600; color: #1a1a2e; margin-bottom: 2px; }
+        .contact-title { color: #666; font-size: 11px; margin-bottom: 5px; }
+        .contact-location { color: #999; font-size: 10px; }
+        .prog-row { margin-bottom: 15px; }
+        .prog-label { display: flex; justify-content: space-between; font-size: 11px; font-weight: 600; color: #666; margin-bottom: 5px; }
+        .prog-bar { width: 100%; height: 8px; background: #e0e0e0; border-radius: 4px; overflow: hidden; }
+        .prog-fill { height: 100%; background: #0055b3; border-radius: 4px; }
+        .loc-us { background: #dbeafe; color: #1e40af; padding: 2px 7px; border-radius: 10px; font-size: 10px; font-weight: 700; }
+        .loc-india { background: #fef3c7; color: #92400e; padding: 2px 7px; border-radius: 10px; font-size: 10px; font-weight: 700; }
+        ::-webkit-scrollbar { width: 8px; } ::-webkit-scrollbar-track { background: #f1f1f1; } ::-webkit-scrollbar-thumb { background: #0055b3; border-radius: 4px; }
+        @media (max-width: 1400px) { .grid-4 { grid-template-columns: repeat(2,1fr); } }
+        @media (max-width: 900px) { .grid-3 { grid-template-columns: repeat(2,1fr); } .grid-2 { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+    <div class="logo-pill">✈ BEAKON</div>
+    <div class="topbar-title">GE Aerospace — Sales Intelligence Dashboard</div>
+    <div style="display:flex;gap:10px;align-items:center;">
+        <div class="pill">$190B Backlog</div>
+        <div class="pill">57,000 Employees</div>
+        <div class="pill">NYSE: GE</div>
+        <div class="pill-status">● Live</div>
+    </div>
+</div>
+
+<!-- REFRESH BANNER -->
+<div class="refresh-banner">
+    <span>📡 GE Aerospace — Independent since Apr 2, 2024 · CEO: Larry Culp (through Dec 2027) · 2025 Revenue +21% YoY · 1,000+ open roles on LinkedIn</span>
+    <span style="font-size:11px;opacity:.8;">Data: Apr 2026</span>
+</div>
+
+<div class="container">
+<!-- SIDEBAR -->
+<div class="sidebar">
+    <div class="sidebar-section">
+        <div class="sidebar-label">GE Aerospace</div>
+        <div class="sidebar-acq-meta">Evendale OH · Lynn MA · Wilmington NC<br>Commercial · Defense · MRO</div>
+    </div>
+    <div class="sidebar-section">
+        <div class="sidebar-label">Sales</div>
+        <div class="sidebar-item active" onclick="switchSection(event,'overview')">📊 Summary KPIs</div>
+        <div class="sidebar-item" onclick="switchSection(event,'contacts')">👥 Key Contacts</div>
+        <div class="sidebar-item" onclick="switchSection(event,'actions')">🎯 Sales Actions</div>
+        <div class="sidebar-item" onclick="switchSection(event,'skills')">⚡ Fast-Sell Skills</div>
+    </div>
+    <div class="sidebar-section">
+        <div class="sidebar-label">Intelligence</div>
+        <div class="sidebar-item" onclick="switchSection(event,'hiring')">💼 Hiring Intelligence</div>
+        <div class="sidebar-item" onclick="switchSection(event,'signals')">📡 Signal Chains</div>
+        <div class="sidebar-item" onclick="switchSection(event,'competitive')">⚔️ Competitive Intel</div>
+    </div>
+    <div class="sidebar-section">
+        <div class="sidebar-label">Programs</div>
+        <div class="sidebar-item" onclick="switchSection(event,'programs')">🔧 Engine Programs</div>
+        <div class="sidebar-item" onclick="switchSection(event,'divisions')">🏭 Sites & Divisions</div>
+    </div>
+    <div class="sidebar-section">
+        <div class="sidebar-label">Reference</div>
+        <div class="sidebar-item" onclick="switchSection(event,'reference')">📋 Cyient Proof Points</div>
+    </div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="main-content">
+
+<!-- ====== OVERVIEW ====== -->
+<div id="overview" class="section active">
+    <div class="section-title">GE Aerospace — Account Overview</div>
+
+    <!-- Strategic Context Banner -->
+    <div style="background:linear-gradient(135deg,#003087,#0055b3);border-radius:12px;padding:16px 22px;margin-bottom:24px;color:#fff;">
+        <div style="font-size:14px;font-weight:700;margin-bottom:6px;">⚡ Strategic Context — Why GE Aerospace Now</div>
+        <div style="font-size:12px;line-height:1.75;opacity:.93;">
+            GE Aerospace became an independent company on <strong>April 2, 2024</strong> (NYSE: GE), completing a multi-year restructuring. The company is now purely an aerospace propulsion business with a <strong>$190B backlog</strong>, <strong>21% revenue growth in 2025</strong>, and a $9.85–10.25B operating profit target for 2026. The LEAP engine ramp (targeting 2,500 units/year by 2028), the 777X/GE9X certification push, and a $500M+ MRO expansion are driving aggressive hiring across engineering, manufacturing, and supply chain. With 1,000+ open roles and a Bangalore India CoE (JFWTC) with 1,000+ patents, Cyient has three distinct entry points: commercial avionics engineering augmentation, defense engine production support, and India delivery partnership.
+        </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="grid-4">
+        <div class="card">
+            <div class="card-title">Total Backlog</div>
+            <div class="kpi">$190B</div>
+            <div class="kpi-label">+$20B YoY (2024)</div>
+            <div class="kpi-change">▲ Record high</div>
+        </div>
+        <div class="card">
+            <div class="card-title">2025 Revenue Growth</div>
+            <div class="kpi">+21%</div>
+            <div class="kpi-label">YoY (2025 results)</div>
+            <div class="kpi-change">▲ 3rd consecutive double-digit year</div>
+        </div>
+        <div class="card">
+            <div class="card-title">Open Roles (LinkedIn)</div>
+            <div class="kpi">1,000+</div>
+            <div class="kpi-label">As of Apr 2026</div>
+            <div class="kpi-change">Engineering, mfg, supply chain</div>
+        </div>
+        <div class="card">
+            <div class="card-title">LEAP Deliveries (2025)</div>
+            <div class="kpi">1,802</div>
+            <div class="kpi-label">+28% YoY from 1,407 in 2024</div>
+            <div class="kpi-change">▲ 2,500/yr target by 2028</div>
+        </div>
+    </div>
+    <div class="grid-4">
+        <div class="card">
+            <div class="card-title">Employees (2025)</div>
+            <div class="kpi">57,000</div>
+            <div class="kpi-label">+7.5% YoY growth</div>
+        </div>
+        <div class="card">
+            <div class="card-title">2024 Revenue</div>
+            <div class="kpi">$38.7B</div>
+            <div class="kpi-label">+9% YoY · 70% from aftermarket</div>
+        </div>
+        <div class="card">
+            <div class="card-title">2026 Op. Profit Target</div>
+            <div class="kpi">$10B</div>
+            <div class="kpi-label">$9.85–$10.25B guidance</div>
+        </div>
+        <div class="card">
+            <div class="card-title">LEAP Order Book</div>
+            <div class="kpi">11,600+</div>
+            <div class="kpi-label">Units in backlog · 20,400+ total orders</div>
+        </div>
+    </div>
+
+    <!-- Program Snapshot -->
+    <div class="grid-2">
+        <div class="card">
+            <div class="card-title">Active Engine Programs</div>
+            <div class="prog-row"><div class="prog-label"><span>LEAP-1A/1B/1C (A320neo/737 MAX/COMAC C919)</span><span>🔥 RAMP</span></div><div class="prog-bar"><div class="prog-fill" style="width:88%;background:#0055b3;"></div></div></div>
+            <div class="prog-row"><div class="prog-label"><span>GEnx (787 Dreamliner)</span><span>Strong</span></div><div class="prog-bar"><div class="prog-fill" style="width:75%;"></div></div></div>
+            <div class="prog-row"><div class="prog-label"><span>GE9X (777X) — In Cert</span><span>Phase 4A/5</span></div><div class="prog-bar"><div class="prog-fill" style="width:62%;background:#f57f17;"></div></div></div>
+            <div class="prog-row"><div class="prog-label"><span>GE90 (777) — MRO Wave</span><span>2nd Visit Surge</span></div><div class="prog-bar"><div class="prog-fill" style="width:70%;background:#388e3c;"></div></div></div>
+            <div class="prog-row"><div class="prog-label"><span>T408 (CH-53K) — $1.4B Contract</span><span>Production Ramp</span></div><div class="prog-bar"><div class="prog-fill" style="width:55%;background:#6a1b9a;"></div></div></div>
+            <div class="prog-row"><div class="prog-label"><span>T700 (AH-64/UH-60) — IDIQ 2029</span><span>Active</span></div><div class="prog-bar"><div class="prog-fill" style="width:65%;background:#1b5e20;"></div></div></div>
+            <div class="prog-row"><div class="prog-label"><span>CFM RISE (Open Fan) — Mid-2030s</span><span>Development</span></div><div class="prog-bar"><div class="prog-fill" style="width:20%;background:#999;"></div></div></div>
+        </div>
+        <div class="card">
+            <div class="card-title">Cyient Entry Points at GE Aerospace</div>
+            <div style="font-size:12px;line-height:1.8;color:#333;">
+                <div style="margin-bottom:12px;padding:10px;background:#e3f2fd;border-radius:6px;border-left:3px solid #0055b3;">
+                    <strong>🔵 Commercial Engines (CES)</strong> — Evendale OH<br/>
+                    LEAP ramp engineering, GEnx product support, GE9X cert sprint. Systems engineering, SW V&V, mechanical design augmentation for high-volume programs.
+                </div>
+                <div style="margin-bottom:12px;padding:10px;background:#f3e5f5;border-radius:6px;border-left:3px solid #6a1b9a;">
+                    <strong>🟣 Defense &amp; Propulsion</strong> — Lynn MA + Albuquerque-adjacent<br/>
+                    T408 ($1.4B ramp) and T700 (IDIQ) production engineering. Non-clearance pocket: systems eng, tech pubs, supply chain. Lynn MA = primary military hub.
+                </div>
+                <div style="margin-bottom:12px;padding:10px;background:#fff8e1;border-radius:6px;border-left:3px solid #f57f17;">
+                    <strong>🟠 JFWTC Bangalore India</strong> — Same city as Cyient HQ<br/>
+                    3,000+ GE engineers in Bangalore. JFWTC does design, analysis, AI/ML optimization for LEAP, GE9X, GEnx. Position Cyient as delivery partner, not just supplier.
+                </div>
+                <div style="padding:10px;background:#e8f5e9;border-radius:6px;border-left:3px solid #1b5e20;">
+                    <strong>🟢 MRO &amp; Services</strong> — Global + Wilmington NC<br/>
+                    $500M+ LEAP MRO expansion, GE90 2nd shop visit wave, Wilmington $60M manufacturing modernization. Facility engineering, tech pubs, QA support.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Financial highlights -->
+    <div class="card" style="margin-bottom:25px;">
+        <div class="card-title">2024–2025 Financial Highlights (Verified)</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;font-size:12px;">
+            <div><div style="font-weight:700;color:#0055b3;font-size:16px;">$38.7B</div><div style="color:#666;">2024 Revenue (+9% YoY)</div></div>
+            <div><div style="font-weight:700;color:#0055b3;font-size:16px;">$7.6B</div><div style="color:#666;">2024 Operating Profit (+27%)</div></div>
+            <div><div style="font-weight:700;color:#0055b3;font-size:16px;">$6.1B</div><div style="color:#666;">2024 Free Cash Flow (+28%)</div></div>
+            <div><div style="font-weight:700;color:#0055b3;font-size:16px;">$15.5B</div><div style="color:#666;">Q4 2024 Orders (+46% YoY)</div></div>
+        </div>
+        <div style="margin-top:12px;font-size:11px;color:#666;">Source: GE Aerospace 2024 Annual Report &amp; Q4 2025 Earnings (Jan 22, 2026)</div>
+    </div>
+</div>
+
+<!-- ====== SIGNAL CHAINS ====== -->
+<div id="signals" class="section">
+    <div class="section-title">📡 Signal Chains — Active Hiring Triggers</div>
+    <div style="font-size:13px;color:#666;margin-bottom:22px;">Real program events driving GE Aerospace engineering talent demand right now. Each chain = a sourcing opportunity for Cyient.</div>
+
+    <!-- Chain 1 -->
+    <div style="background:white;border-radius:12px;padding:18px;margin-bottom:16px;border-left:5px solid #0055b3;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+            <div style="font-size:14px;font-weight:700;color:#0055b3;">🔵 LEAP Production Ramp — 2,500 engines/year by 2028</div>
+            <span style="background:#fdecea;color:#c62828;font-size:10px;font-weight:700;padding:3px 9px;border-radius:10px;">🔥 HOT</span>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:#555;margin-bottom:10px;">
+            <span>📍 <span class="loc-us">Evendale OH</span></span>
+            <span>🔗 CFM International JV (GE 50% + Safran 50%)</span>
+            <span>📦 1,802 delivered 2025 → 2,000 target 2026 → 2,500 target 2028</span>
+        </div>
+        <div style="font-size:12px;line-height:1.7;color:#444;margin-bottom:10px;">
+            The LEAP engine (CFM56 successor) powers the A320neo family, 737 MAX, and COMAC C919. GE delivered 1,802 units in 2025 (+28% YoY), with 11,600+ units in backlog and 20,400+ total orders. The ramp to 2,500/year by 2028 requires proportional growth in manufacturing engineering, systems engineering, supply chain, and quality. The Evendale OH campus is GE Aerospace's largest engineering hub with ~9,000 employees in the Cincinnati-Northern KY corridor.
+        </div>
+        <div style="font-size:11px;color:#555;"><strong>Cyient angle:</strong> LEAP turbine/compressor mechanical design augmentation, supply chain engineering, quality/AS9100, tech pubs (ATA iSpec 2200), test engineering</div>
+        <div style="margin-top:8px;font-size:11px;color:#0055b3;">📌 Target TA: GE Aerospace Evendale Talent Acquisition · Search "GE Aerospace LEAP systems engineer Evendale"</div>
+    </div>
+
+    <!-- Chain 2 -->
+    <div style="background:white;border-radius:12px;padding:18px;margin-bottom:16px;border-left:5px solid #f57f17;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+            <div style="font-size:14px;font-weight:700;color:#e65100;">🟠 GE9X / Boeing 777X Certification Sprint</div>
+            <span style="background:#fdecea;color:#c62828;font-size:10px;font-weight:700;padding:3px 9px;border-radius:10px;">🔥 HOT</span>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:#555;margin-bottom:10px;">
+            <span>📍 <span class="loc-us">Evendale OH</span></span>
+            <span>🔗 Boeing 777X program (FAA Phase 4A of 5 approved, 2026)</span>
+            <span>📦 GE9X engine FAA-certified Sep 2020; Boeing 777X first delivery target 2027</span>
+        </div>
+        <div style="font-size:12px;line-height:1.7;color:#444;margin-bottom:10px;">
+            The GE9X (105,000 lb-thrust) is the world's largest commercial aircraft engine, powering the Boeing 777X. The engine is FAA-certified (Sep 2020) but the 777X aircraft itself is still in certification — Phase 4A of 5 approved in early 2026. After a 2024 setback (titanium thrust link failures), flight testing resumed January 2025. Boeing targets first 777X delivery in 2027. The certification sprint is driving significant GE9X systems engineering, SW validation, and test engineering demand at Evendale.
+        </div>
+        <div style="font-size:11px;color:#555;"><strong>Cyient angle:</strong> Systems engineering, V&V test support, engine data analysis, technical publications for the GE9X certification program</div>
+        <div style="margin-top:8px;font-size:11px;color:#0055b3;">📌 Target TA: GE9X Program TA at Evendale · Search "GE Aerospace GE9X engineer"</div>
+    </div>
+
+    <!-- Chain 3 -->
+    <div style="background:white;border-radius:12px;padding:18px;margin-bottom:16px;border-left:5px solid #6a1b9a;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+            <div style="font-size:14px;font-weight:700;color:#6a1b9a;">🟣 T408 CH-53K Production Surge — $1.4B NAVAIR Contract</div>
+            <span style="background:#fdecea;color:#c62828;font-size:10px;font-weight:700;padding:3px 9px;border-radius:10px;">🔥 HOT</span>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:#555;margin-bottom:10px;">
+            <span>📍 <span class="loc-us">Lynn MA</span></span>
+            <span>🔗 CH-53K King Stallion (NAVAIR Lots 9–13)</span>
+            <span>📦 $1.4B contract awarded January 2026 · Multi-year production</span>
+        </div>
+        <div style="font-size:12px;line-height:1.7;color:#444;margin-bottom:10px;">
+            In January 2026, GE Aerospace was awarded a $1.4B contract from Naval Air Systems Command (NAVAIR) for T408 turboshaft engines powering the Sikorsky CH-53K King Stallion (Lots 9–13). The T408 offers 18% better fuel consumption and 63% fewer parts than the T64 it replaces. Lynn MA is GE's primary military engine site — 130+ year history, home to the first U.S. jet engine (1942). The production ramp drives manufacturing engineering, quality, and supply chain hiring.
+        </div>
+        <div style="font-size:11px;color:#555;"><strong>Non-clearance pocket:</strong> Manufacturing engineering, supply chain, quality (AS9100), technical publications (ASD-STE100 / S1000D), systems engineering (unclassified production support)</div>
+        <div style="margin-top:8px;font-size:11px;color:#0055b3;">📌 Target TA: GE Aerospace Lynn MA Defense TA BP · Search "GE Aerospace Lynn Massachusetts engineer"</div>
+    </div>
+
+    <!-- Chain 4 -->
+    <div style="background:white;border-radius:12px;padding:18px;margin-bottom:16px;border-left:5px solid #1b5e20;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+            <div style="font-size:14px;font-weight:700;color:#1b5e20;">🟢 T700 Army/FMS Expansion — IDIQ Through 2029 + Poland AH-64E</div>
+            <span style="background:#e8f5e9;color:#1b5e20;font-size:10px;font-weight:700;padding:3px 9px;border-radius:10px;">STRONG</span>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:#555;margin-bottom:10px;">
+            <span>📍 <span class="loc-us">Lynn MA</span> · <span class="loc-us">Madisonville KY</span></span>
+            <span>🔗 AH-64E Apache, UH-60 Black Hawk, multi-branch US military + FMS</span>
+            <span>📦 June 2024: IDIQ up to 950 engines through 2029 · Jan 2025: 210 engines for Poland</span>
+        </div>
+        <div style="font-size:12px;line-height:1.7;color:#444;margin-bottom:10px;">
+            The T700 turboshaft is the backbone of U.S. Army aviation — powering the AH-64 Apache and UH-60 Black Hawk. GE received a $1.1B IDIQ contract (June 2024) for up to 950 T700 engines through 2029, plus a January 2025 order for 210 engines for 96 Boeing AH-64E Apache Guardians for Poland's military. Strong international FMS demand signals sustained production well past 2029. Lynn MA and Madisonville KY are the primary production sites.
+        </div>
+        <div style="font-size:11px;color:#555;"><strong>Cyient angle:</strong> Turboshaft mechanical design, tech pubs (S1000D), quality engineering, supply chain optimization, Madisonville manufacturing eng</div>
+        <div style="margin-top:8px;font-size:11px;color:#0055b3;">📌 Target TA: GE Defense Lynn MA / Madisonville TA · Search "GE Aerospace T700 engineer Madisonville"</div>
+    </div>
+
+    <!-- Chain 5 -->
+    <div style="background:white;border-radius:12px;padding:18px;margin-bottom:16px;border-left:5px solid #00695c;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+            <div style="font-size:14px;font-weight:700;color:#00695c;">🌊 GE90 / CFM56 MRO Second-Visit Wave</div>
+            <span style="background:#e0f2f1;color:#00695c;font-size:10px;font-weight:700;padding:3px 9px;border-radius:10px;">GROWING</span>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:#555;margin-bottom:10px;">
+            <span>📍 <span class="loc-us">Evendale OH</span> + Global MRO Network</span>
+            <span>🔗 777 Classic operators, 737NG/A320ceo operators worldwide</span>
+            <span>📦 CFM56: 2,300–2,400 shop visits/year through 2028 · GE90: 2nd visits 60–70% heavier than 1st</span>
+        </div>
+        <div style="font-size:12px;line-height:1.7;color:#444;margin-bottom:10px;">
+            GE Aerospace is investing $500M+ in LEAP MRO capacity globally (Brazil, Malaysia, Dubai, Dallas, Asia-Pacific) and the GE90 is entering its second shop-visit wave — these visits are 60–70% more complex than first visits. CFM56 shop visits remain at 2,300–2,400/year through 2028. GE's MRO-heavy revenue model (70% of revenue from aftermarket) makes this the highest-margin segment. Q4 2025 turnaround times improved 10% YoY signaling capacity expansion underway.
+        </div>
+        <div style="font-size:11px;color:#555;"><strong>Cyient angle:</strong> MRO facility engineering, overhaul documentation (ATA iSpec 2200), repair development engineering, quality/NDT, Wilmington NC manufacturing support</div>
+        <div style="margin-top:8px;font-size:11px;color:#0055b3;">📌 Target TA: GE Aerospace MRO Engineering TA · Search "GE Aerospace MRO engineer Cincinnati"</div>
+    </div>
+
+    <!-- Chain 6 -->
+    <div style="background:white;border-radius:12px;padding:18px;margin-bottom:16px;border-left:5px solid #c07800;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+            <div style="font-size:14px;font-weight:700;color:#c07800;">🟡 Wilmington NC Manufacturing Modernization — $60M Investment</div>
+            <span style="background:#fff8e1;color:#c07800;font-size:10px;font-weight:700;padding:3px 9px;border-radius:10px;">ACTIVE</span>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:#555;margin-bottom:10px;">
+            <span>📍 <span class="loc-us">Wilmington NC</span></span>
+            <span>🔗 Rotating parts for commercial and military engines (LEAP, GE90, GE9X, T700)</span>
+            <span>📦 600,000 sq ft · 300+ CNC machines · $60M modernization underway</span>
+        </div>
+        <div style="font-size:12px;line-height:1.7;color:#444;margin-bottom:10px;">
+            GE Aerospace's Wilmington NC facility is the primary manufacturing hub for high-precision rotating parts (blades, discs, shafts) used across commercial and military engine programs. The $60M modernization investment is upgrading equipment and expanding capacity to support LEAP ramp and T408/T700 production. This is an actively hiring manufacturing engineering site — CNC programming, quality engineering, manufacturing process engineering, and weld engineering roles.
+        </div>
+        <div style="font-size:11px;color:#555;"><strong>Cyient angle:</strong> Manufacturing engineering, CNC process development, quality/NDT, DFM analysis, weld engineering documentation</div>
+        <div style="margin-top:8px;font-size:11px;color:#0055b3;">📌 Target TA: GE Aerospace Wilmington TA · Search "GE Aerospace manufacturing engineer Wilmington NC"</div>
+    </div>
+
+    <!-- Chain 7 -->
+    <div style="background:white;border-radius:12px;padding:18px;margin-bottom:16px;border-left:5px solid #b71c1c;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+            <div style="font-size:14px;font-weight:700;color:#b71c1c;">🇮🇳 JFWTC Bangalore — India Engineering CoE</div>
+            <span style="background:#fdecea;color:#c62828;font-size:10px;font-weight:700;padding:3px 9px;border-radius:10px;">PRIORITY</span>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:#555;margin-bottom:10px;">
+            <span>📍 <span class="loc-india">Bangalore, India</span></span>
+            <span>🔗 John F. Welch Technology Centre — Est. 2000, 25 years of excellence</span>
+            <span>📦 1,000+ patents contributed · AI-driven engine optimization · Supports LEAP, GE9X, GEnx, GE90</span>
+        </div>
+        <div style="font-size:12px;line-height:1.7;color:#444;margin-bottom:10px;">
+            JFWTC Bangalore is GE Aerospace's second-largest engineering center globally. Engineers here contribute to design analysis, CFD, product support engineering, AI/ML-based engine efficiency optimization, and FAA compliance support for LEAP, GE9X, GEnx, and GE90 programs. GE is actively hiring in Bangalore across mechanical design, systems, data analytics, and computational engineering. <strong>Cyient's Hyderabad HQ and Bangalore presence puts Cyient in the same ecosystem — same talent pool, same engineering standards, direct collaboration opportunity.</strong>
+        </div>
+        <div style="font-size:11px;color:#555;"><strong>Cyient angle:</strong> Design analysis, CFD/FEA, product support eng, AI/ML engineering optimization, DO-178C — position as India delivery partner not just a vendor</div>
+        <div style="margin-top:8px;font-size:11px;color:#0055b3;">📌 Target: JFWTC Engineering Director / GE Aerospace India TA · careers.geaerospace.com/global/en/bengaluru</div>
+    </div>
+
+    <!-- Chain 8 -->
+    <div style="background:white;border-radius:12px;padding:18px;margin-bottom:6px;border-left:5px solid #37474f;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+            <div style="font-size:14px;font-weight:700;color:#37474f;">🔭 CFM RISE Open Fan — Mid-2030s Horizon Program</div>
+            <span style="background:#eceff1;color:#37474f;font-size:10px;font-weight:700;padding:3px 9px;border-radius:10px;">HORIZON</span>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:#555;margin-bottom:10px;">
+            <span>📍 <span class="loc-us">Evendale OH</span> + ONERA France (wind tunnel)</span>
+            <span>🔗 CFM International (GE + Safran) · NASA · Boeing collaboration</span>
+            <span>📦 300+ hours wind tunnel testing at 1/5 scale · DoE 840,000 supercomputing hours awarded</span>
+        </div>
+        <div style="font-size:12px;line-height:1.7;color:#444;margin-bottom:10px;">
+            RISE (Revolutionary Innovation for Sustainable Engines) is CFM's open-fan program targeting 20% lower fuel burn and CO2 vs. current engines — the propulsion technology for the next-generation narrowbody (post-2035). 300+ wind tunnel hours completed at ONERA, high-pressure turbine demonstrator tested at Evendale, and GE received 840,000 supercomputing hours from the DoE for engine-airframe integration modeling. Airbus flight demonstration planned later this decade. This is a 10-year engineering runway.
+        </div>
+        <div style="font-size:11px;color:#555;"><strong>Cyient angle:</strong> CFD simulation, aerodynamic analysis, systems modeling, MBSE for next-gen propulsion architecture — build the relationship early for a decade-long program</div>
+        <div style="margin-top:8px;font-size:11px;color:#0055b3;">📌 Target: CFM RISE Program Engineering Lead at Evendale · Search "GE Aerospace RISE propulsion engineer"</div>
+    </div>
+</div>
+
+<!-- ====== CONTACTS ====== -->
+<div id="contacts" class="section">
+    <div class="section-title">👥 Key Contacts — GE Aerospace</div>
+    <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:12px 16px;margin-bottom:22px;font-size:12px;color:#856404;">
+        ⚠️ <strong>Note:</strong> Contact details below are directional — verify on LinkedIn before outreach. GE Aerospace TA is organized by program/site. Entry point recommendation: target TA Business Partners at Evendale OH (CES), Lynn MA (Defense), and JFWTC Bangalore (India). All have active LinkedIn presence.
+    </div>
+    <div class="grid-2">
+        <div>
+            <div style="font-size:13px;font-weight:700;color:#0055b3;margin-bottom:12px;">📍 Evendale OH — Commercial Engines (CES)</div>
+            <div class="contact-card">
+                <div class="contact-name">CES Talent Acquisition Business Partner</div>
+                <div class="contact-title">Commercial Engines & Services — Evendale OH</div>
+                <div class="contact-location">Target via LinkedIn: "GE Aerospace Talent Acquisition Evendale"</div>
+            </div>
+            <div class="contact-card">
+                <div class="contact-name">LEAP Program Engineering TA Lead</div>
+                <div class="contact-title">CFM / LEAP Production Engineering Staffing</div>
+                <div class="contact-location">Evendale OH · Search "GE Aerospace LEAP TA"</div>
+            </div>
+            <div class="contact-card">
+                <div class="contact-name">GE9X Program TA</div>
+                <div class="contact-title">GE9X Certification Engineering Staffing</div>
+                <div class="contact-location">Evendale OH · 777X program alignment</div>
+            </div>
+        </div>
+        <div>
+            <div style="font-size:13px;font-weight:700;color:#6a1b9a;margin-bottom:12px;">📍 Lynn MA — Defense & Propulsion</div>
+            <div class="contact-card" style="border-left-color:#6a1b9a;">
+                <div class="contact-name">Defense TA Business Partner — Lynn MA</div>
+                <div class="contact-title">T408 / T700 / Military Programs Staffing</div>
+                <div class="contact-location">Lynn MA · Search "GE Aerospace defense engineer Lynn Massachusetts"</div>
+            </div>
+            <div class="contact-card" style="border-left-color:#6a1b9a;">
+                <div class="contact-name">Madisonville KY Manufacturing TA</div>
+                <div class="contact-title">T700 Engine Component Production</div>
+                <div class="contact-location">Madisonville KY · Manufacturing engineering roles</div>
+            </div>
+        </div>
+    </div>
+    <div class="grid-2">
+        <div>
+            <div style="font-size:13px;font-weight:700;color:#b71c1c;margin-bottom:12px;">📍 Bangalore — JFWTC India</div>
+            <div class="contact-card" style="border-left-color:#b71c1c;">
+                <div class="contact-name">JFWTC Engineering Director / India TA Lead</div>
+                <div class="contact-title">John F. Welch Technology Centre, Bangalore</div>
+                <div class="contact-location">careers.geaerospace.com/global/en/bengaluru · Established 2000</div>
+            </div>
+            <div class="contact-card" style="border-left-color:#b71c1c;">
+                <div class="contact-name">GE Aerospace India TA BP</div>
+                <div class="contact-title">Product Support, Design Analysis, AI/ML</div>
+                <div class="contact-location">Bangalore · Same city as Cyient HQ — use proximity advantage</div>
+            </div>
+        </div>
+        <div>
+            <div style="font-size:13px;font-weight:700;color:#00695c;margin-bottom:12px;">📍 Wilmington NC — Manufacturing</div>
+            <div class="contact-card" style="border-left-color:#00695c;">
+                <div class="contact-name">Wilmington NC Manufacturing TA</div>
+                <div class="contact-title">Rotating Parts Manufacturing · $60M Modernization</div>
+                <div class="contact-location">Wilmington NC · CNC, quality, welding, mfg eng</div>
+            </div>
+            <div class="contact-card" style="border-left-color:#37474f;">
+                <div class="contact-name">H. Lawrence "Larry" Culp, Jr.</div>
+                <div class="contact-title">Chairman & CEO, GE Aerospace</div>
+                <div class="contact-location">Evendale OH · Term extended through Dec 31, 2027</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ====== SALES ACTIONS ====== -->
+<div id="actions" class="section">
+    <div class="section-title">🎯 Targeted Sales Actions — GE Aerospace</div>
+
+    <!-- Strategic Banner -->
+    <div style="background:linear-gradient(135deg,#003087,#0055b3);border-radius:12px;padding:16px 20px;margin-bottom:22px;color:#fff;">
+        <div style="font-size:13px;font-weight:700;margin-bottom:6px;">⚡ Account Moment — Three Simultaneous Ramps</div>
+        <div style="font-size:12px;line-height:1.7;opacity:.93;">
+            GE Aerospace is running three simultaneous production ramps: LEAP to 2,500 engines/year (commercial), T408 $1.4B NAVAIR contract (defense), and $500M+ MRO network expansion. All three drive engineering talent demand at Evendale OH, Lynn MA, and Wilmington NC simultaneously. The Bangalore JFWTC creates a fourth entry point where Cyient can compete as a local delivery partner rather than a remote offshore vendor.
+        </div>
+    </div>
+
+    <!-- BU 1: CES COMMERCIAL -->
+    <div style="border-radius:12px;overflow:hidden;margin-bottom:20px;border:1.5px solid #bbdefb;">
+        <div style="background:linear-gradient(135deg,#003087,#0055b3);padding:14px 18px;color:#fff;">
+            <div style="font-size:14px;font-weight:700;">⚙️ Commercial Engines &amp; Services (CES)</div>
+            <div style="font-size:11px;opacity:.85;margin-top:3px;">Evendale OH · Cincinnati area · ~9,000 employees · LEAP / GEnx / GE9X / GE90 programs</div>
+        </div>
+        <div style="padding:16px 18px;background:#fff;display:flex;flex-direction:column;gap:10px;">
+            <div style="display:flex;gap:11px;background:#e3f2fd;border-radius:8px;padding:11px 14px;border-left:4px solid #003087;">
+                <div style="background:#003087;color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">1</div>
+                <div style="font-size:12px;line-height:1.6;">
+                    <strong>🔴 LEAP Ramp Engineering Augmentation — Evendale OH (HOT)</strong><br/>
+                    CFM delivered 1,802 LEAP engines in 2025 (+28% YoY) and must reach 2,500/year by 2028 — a 39% further increase from current rates. Every 100-unit production increase requires proportional growth in systems engineering, manufacturing engineering, quality, and supply chain. GE Aerospace is actively hiring across all these disciplines at Evendale. Cyient's aerospace engineering practice (mechanical design, FEA/CFD, quality/AS9100) maps directly to CES's ramp engineering needs.<br/>
+                    <span style="color:#0055a5;">📌 Target: CES TA BP at Evendale · Search "GE Aerospace LEAP systems engineer" or "CFM International engineer"</span><br/>
+                    <span style="color:#b71c1c;font-size:11px;">⚡ Fast-sell: Turbine mechanical design · FEA/CFD analysis · AS9100 quality · Supply chain eng · Systems eng · Evendale OH</span>
+                </div>
+            </div>
+            <div style="display:flex;gap:11px;background:#e3f2fd;border-radius:8px;padding:11px 14px;border-left:4px solid #003087;">
+                <div style="background:#003087;color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">2</div>
+                <div style="font-size:12px;line-height:1.6;">
+                    <strong>🔴 GE9X / 777X Certification Sprint — Systems &amp; V&amp;V Engineering (HOT)</strong><br/>
+                    The GE9X is FAA-certified (Sep 2020) but the 777X aircraft is in Phase 4A of 5 for FAA type certification, targeting first delivery in 2027. The certification sprint requires GE9X systems engineering, test data analysis, engine-aircraft integration validation, and technical documentation to support Boeing's submission timeline. GE is scaling the GE9X team to meet Boeing's 2027 deadline — a hard, time-bounded window with non-negotiable urgency.<br/>
+                    <span style="color:#0055a5;">📌 Target: GE9X Program Engineering TA at Evendale · Outreach framing: cert-phase engineering augmentation</span><br/>
+                    <span style="color:#b71c1c;font-size:11px;">⚡ Fast-sell: Systems engineering · V&amp;V / test engineering · Engine-airframe integration · Data analysis · Technical publications</span>
+                </div>
+            </div>
+            <div style="display:flex;gap:11px;background:#fff8f0;border-radius:8px;padding:11px 14px;border-left:4px solid #f57f17;">
+                <div style="background:#f57f17;color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">3</div>
+                <div style="font-size:12px;line-height:1.6;">
+                    <strong>🟡 GEnx Product Support &amp; MRO Engineering — Evendale + Global</strong><br/>
+                    GEnx powers 2/3 of all 787 Dreamliners in service — GE's fastest-selling high-thrust engine with ~3,000 engines in service/backlog. Boeing is targeting 75–80 787 deliveries in 2025 (vs. 51 in 2024), and every new delivery adds to the growing GEnx MRO demand. Product support engineering, overhaul documentation, and repair development represent a steady, recurring workstream with good margin stability.<br/>
+                    <span style="color:#0055a5;">📌 Target: GEnx Product Support TA at Evendale · Search "GE Aerospace GEnx product support engineer"</span><br/>
+                    <span style="color:#c62828;font-size:11px;">⚡ Fast-sell: Product support eng · MRO tech pubs (ATA iSpec 2200) · Overhaul documentation · Repair dev engineering</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BU 2: DEFENSE -->
+    <div style="border-radius:12px;overflow:hidden;margin-bottom:20px;border:1.5px solid #e1bee7;">
+        <div style="background:linear-gradient(135deg,#4a148c,#6a1b9a);padding:14px 18px;color:#fff;">
+            <div style="font-size:14px;font-weight:700;">🛡️ Defense &amp; Propulsion Technologies</div>
+            <div style="font-size:11px;opacity:.85;margin-top:3px;">Lynn MA (HQ) · Madisonville KY · T408 / T700 / XA100 programs · $1.4B NAVAIR contract 2026</div>
+        </div>
+        <div style="padding:16px 18px;background:#fff;display:flex;flex-direction:column;gap:10px;">
+            <div style="display:flex;gap:11px;background:#f3e5f5;border-radius:8px;padding:11px 14px;border-left:4px solid #4a148c;">
+                <div style="background:#4a148c;color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">1</div>
+                <div style="font-size:12px;line-height:1.6;">
+                    <strong>🔴 T408 CH-53K Production Engineering — Lynn MA (HOT)</strong><br/>
+                    $1.4B NAVAIR contract awarded January 2026 for T408 turboshaft engines (Lots 9–13) powering the CH-53K King Stallion. 18% better fuel consumption and 63% fewer parts than the T64 predecessor. Lynn MA is scaling production engineering to meet multi-year delivery commitments. <strong>Non-clearance roles: manufacturing engineering, quality (AS9100D), technical publications, supply chain engineering.</strong> T408 is a 5+ year production program — stable, long-duration pipeline.<br/>
+                    <span style="color:#0055a5;">📌 Target: GE Defense Lynn MA TA BP · Search "GE Aerospace Lynn Massachusetts T408 engineer"</span><br/>
+                    <span style="color:#b71c1c;font-size:11px;">⚡ Fast-sell: Manufacturing eng · Quality/AS9100 · Tech pubs (S1000D / ASD-STE100) · Supply chain eng · Lynn MA</span>
+                </div>
+            </div>
+            <div style="display:flex;gap:11px;background:#f3e5f5;border-radius:8px;padding:11px 14px;border-left:4px solid #4a148c;">
+                <div style="background:#4a148c;color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">2</div>
+                <div style="font-size:12px;line-height:1.6;">
+                    <strong>🔴 T700 Army Expansion — Madisonville KY + Lynn MA (HOT)</strong><br/>
+                    IDIQ contract (June 2024) for up to 950 T700 engines through 2029, plus 210-engine FMS order for Poland's AH-64E Apache (January 2025). T700 is the workhorse of U.S. Army aviation — production is continuous with strong international FMS demand well past 2029. Madisonville KY handles engine component production; Lynn MA handles final assembly and test. Both sites hiring manufacturing and quality engineers.<br/>
+                    <span style="color:#0055a5;">📌 Target: GE Aerospace Madisonville TA · Search "GE Aerospace engineer Madisonville Kentucky"</span><br/>
+                    <span style="color:#b71c1c;font-size:11px;">⚡ Fast-sell: Turboshaft mfg eng · Quality engineering · NDT · Component design · S1000D tech pubs · Madisonville KY</span>
+                </div>
+            </div>
+            <div style="display:flex;gap:11px;background:#faf0ff;border-radius:8px;padding:11px 14px;border-left:4px solid #ab47bc;">
+                <div style="background:#ab47bc;color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">3</div>
+                <div style="font-size:12px;line-height:1.6;">
+                    <strong>🟡 Northstar Aerospace Integration — Helicopter Gears &amp; Transmissions</strong><br/>
+                    <em style="color:#856404;">⚠️ Clearance note: GE Defense roles at Lynn often require clearance. Target non-clearance engineering pockets only.</em><br/>
+                    GE Aerospace acquired Northstar Aerospace (June 2025, from Wynnchurch Capital) — a manufacturer of flight-critical gears, housings, assemblies, and shafts for helicopter transmissions. Northstar is now part of Avio Aero. Integration creates cross-site engineering coordination needs (Bedford Park IL → Lynn MA / Avio Aero Italy). Design engineering, QA, and configuration management roles in the integration phase are typically unclassified.<br/>
+                    <span style="color:#0055a5;">📌 Target: Avio Aero / GE Defense Integration TA · Search "Avio Aero engineer" or "GE Aerospace helicopter transmission"</span><br/>
+                    <span style="color:#c62828;font-size:11px;">⚡ Fast-sell: Mechanical design (gears/transmissions) · QA/AS9100 · Configuration management · DFM analysis</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BU 3: INDIA & MRO -->
+    <div style="border-radius:12px;overflow:hidden;margin-bottom:6px;border:1.5px solid #ffe0b2;">
+        <div style="background:linear-gradient(135deg,#e65100,#f57c00);padding:14px 18px;color:#fff;">
+            <div style="font-size:14px;font-weight:700;">🇮🇳 JFWTC India &amp; Global MRO Services</div>
+            <div style="font-size:11px;opacity:.85;margin-top:3px;">Bangalore India · Wilmington NC · Global MRO Network · $500M+ MRO investment</div>
+        </div>
+        <div style="padding:16px 18px;background:#fff;display:flex;flex-direction:column;gap:10px;">
+            <div style="display:flex;gap:11px;background:#fff3e0;border-radius:8px;padding:11px 14px;border-left:4px solid #e65100;">
+                <div style="background:#e65100;color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">1</div>
+                <div style="font-size:12px;line-height:1.6;">
+                    <strong>🔴 JFWTC Bangalore — India Delivery Partnership (PRIORITY)</strong><br/>
+                    GE Aerospace's John F. Welch Technology Centre (established 2000) has contributed 1,000+ patents across LEAP, GE9X, GEnx, and GE90 programs. It conducts design analysis, CFD, AI/ML-driven engine efficiency optimization, and FAA compliance support. GE is actively hiring in Bangalore across mechanical design, systems engineering, data analytics, and product support. <strong>Cyient's Hyderabad HQ and Bangalore engineering center are in the same ecosystem — same talent pool, same engineering culture. Position Cyient as a preferred India engineering delivery partner for JFWTC programs, not just a staffing vendor.</strong><br/>
+                    <span style="color:#0055a5;">📌 Target: JFWTC Engineering Director or India TA Lead · careers.geaerospace.com/global/en/bengaluru · Hyderabad proximity = differentiator</span><br/>
+                    <span style="color:#b71c1c;font-size:11px;">⚡ Fast-sell: CFD/FEA analysis · Product support eng · AI/ML engineering · Design analysis · Same-city delivery advantage</span>
+                </div>
+            </div>
+            <div style="display:flex;gap:11px;background:#fff3e0;border-radius:8px;padding:11px 14px;border-left:4px solid #e65100;">
+                <div style="background:#e65100;color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">2</div>
+                <div style="font-size:12px;line-height:1.6;">
+                    <strong>🔴 LEAP MRO Expansion Engineering — Global + Wilmington NC</strong><br/>
+                    GE Aerospace is investing $500M+ in LEAP MRO capacity globally (Brazil, Malaysia, Dubai, Dallas, Asia-Pacific) plus $60M in Wilmington NC manufacturing modernization. Each new MRO facility requires facility engineering, tooling design, process documentation, quality system setup, and tech pubs authoring. Wilmington NC is the hub for US LEAP MRO support — a production-engineering-heavy site with active hiring.<br/>
+                    <span style="color:#0055a5;">📌 Target: GE MRO Engineering TA · Wilmington NC and Global MRO Network · Search "GE Aerospace MRO engineer"</span><br/>
+                    <span style="color:#b71c1c;font-size:11px;">⚡ Fast-sell: MRO facility engineering · Overhaul documentation (ATA iSpec 2200) · Repair development · Quality/NDT</span>
+                </div>
+            </div>
+            <div style="display:flex;gap:11px;background:#fffde7;border-radius:8px;padding:11px 14px;border-left:4px solid #f9a825;">
+                <div style="background:#f9a825;color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">3</div>
+                <div style="font-size:12px;line-height:1.6;">
+                    <strong>🟢 RISE Open Fan — Build the Relationship Now for a Decade-Long Program</strong><br/>
+                    The RISE program (CFM International) targets commercialization in the mid-2030s. GE and Safran have committed to open-fan propulsion as the technology for the next narrowbody. 300+ wind tunnel hours, DoE supercomputing collaboration, and Boeing/NASA integration studies are all active now. The engineering team is small today but will grow dramatically through the 2020s. <strong>Positioning Cyient on RISE engineering now — even in a support role — creates a 10+ year franchise relationship.</strong><br/>
+                    <span style="color:#0055a5;">📌 Target: CFM RISE Program Engineering Lead at Evendale · Long-horizon relationship play</span><br/>
+                    <span style="color:#c62828;font-size:11px;">⚡ Fast-sell: CFD/aerodynamic analysis · MBSE / SysML · Systems modeling · Computational simulation support</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ====== SKILLS ====== -->
+<div id="skills" class="section">
+    <div class="section-title">⚡ Fast-Sell Skills for GE Aerospace</div>
+    <div class="grid-2">
+        <div class="card">
+            <div class="card-title">Cyient Core Competencies — Direct Match</div>
+            <div style="margin-bottom:14px;">
+                <div style="font-weight:600;font-size:12px;color:#1a1a2e;margin-bottom:8px;">🎯 Commercial Engines (CES / Evendale)</div>
+                <span class="tag tag-accent">Turbine Mechanical Design (CATIA)</span>
+                <span class="tag tag-accent">FEA / Stress Analysis</span>
+                <span class="tag tag-accent">CFD (ANSYS / Fluent)</span>
+                <span class="tag tag-accent">AS9100 Quality Engineering</span>
+                <span class="tag tag-accent">Tech Pubs (ATA iSpec 2200)</span>
+                <span class="tag tag-accent">Systems Engineering</span>
+                <span class="tag tag-accent">Supply Chain Engineering</span>
+            </div>
+            <div style="margin-bottom:14px;">
+                <div style="font-weight:600;font-size:12px;color:#1a1a2e;margin-bottom:8px;">🛡️ Defense (Lynn MA / Madisonville KY)</div>
+                <span class="tag tag-accent">Manufacturing Engineering</span>
+                <span class="tag tag-accent">NDT / Quality Inspection</span>
+                <span class="tag tag-accent">S1000D Tech Pubs</span>
+                <span class="tag tag-accent">Configuration Management</span>
+                <span class="tag tag-accent">DFM / DFA Analysis</span>
+            </div>
+            <div>
+                <div style="font-weight:600;font-size:12px;color:#1a1a2e;margin-bottom:8px;">🇮🇳 India / JFWTC (Bangalore)</div>
+                <span class="tag tag-accent">Product Support Engineering</span>
+                <span class="tag tag-accent">AI/ML Engineering Analytics</span>
+                <span class="tag tag-accent">Design Analysis</span>
+                <span class="tag tag-accent">India Delivery (Same City)</span>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-title">Market Urgency &amp; GE Hiring Signals</div>
+            <div style="font-size:12px;line-height:1.8;color:#333;">
+                <div style="margin-bottom:12px;padding:10px;background:#fdecea;border-radius:6px;">
+                    <strong style="color:#c62828;">🔥 Highest Urgency (Command Premium)</strong>
+                    <ul style="margin-left:15px;margin-top:4px;">
+                        <li>LEAP ramp engineering — 39% more output needed by 2028</li>
+                        <li>GE9X cert sprint — hard 2027 Boeing delivery deadline</li>
+                        <li>T408 production ramp — $1.4B contract, multi-year obligation</li>
+                    </ul>
+                </div>
+                <div style="margin-bottom:12px;padding:10px;background:#fff3e0;border-radius:6px;">
+                    <strong style="color:#e65100;">📈 Strong Growth (Sustained)</strong>
+                    <ul style="margin-left:15px;margin-top:4px;">
+                        <li>JFWTC Bangalore — actively hiring, co-located with Cyient</li>
+                        <li>MRO expansion — $500M+ capex signals hiring wave</li>
+                        <li>GEnx product support — 787 ramp adds to installed base</li>
+                    </ul>
+                </div>
+                <div style="padding:10px;background:#e8f5e9;border-radius:6px;">
+                    <strong style="color:#1b5e20;">🌱 Long-Horizon (Build Now)</strong>
+                    <ul style="margin-left:15px;margin-top:4px;">
+                        <li>RISE open fan — mid-2030s program, team building now</li>
+                        <li>XA100 adaptive cycle — next-gen military, ongoing dev</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ====== HIRING INTELLIGENCE ====== -->
+<div id="hiring" class="section">
+    <div class="section-title">💼 Hiring Intelligence — GE Aerospace</div>
+    <div class="grid-2" style="margin-bottom:20px;">
+        <div class="card">
+            <div class="card-title">Hiring by Site (Estimated)</div>
+            <div class="prog-row"><div class="prog-label"><span>Evendale / Cincinnati OH (CES HQ)</span><span>~450+</span></div><div class="prog-bar"><div class="prog-fill" style="width:90%;"></div></div></div>
+            <div class="prog-row"><div class="prog-label"><span>Lynn MA (Defense)</span><span>~180+</span></div><div class="prog-bar"><div class="prog-fill" style="width:55%;"></div></div></div>
+            <div class="prog-row"><div class="prog-label"><span>Wilmington NC (Manufacturing)</span><span>~120+</span></div><div class="prog-bar"><div class="prog-fill" style="width:40%;"></div></div></div>
+            <div class="prog-row"><div class="prog-label"><span>Bangalore India (JFWTC)</span><span>~150+</span></div><div class="prog-bar"><div class="prog-fill" style="width:45%;background:#e65100;"></div></div></div>
+            <div class="prog-row"><div class="prog-label"><span>Madisonville KY</span><span>~80+</span></div><div class="prog-bar"><div class="prog-fill" style="width:28%;"></div></div></div>
+            <div style="font-size:10px;color:#999;margin-top:8px;">Estimates based on LinkedIn/careers portal. Total 1,000+ open roles as of Apr 2026.</div>
+        </div>
+        <div class="card">
+            <div class="card-title">Top Hiring Disciplines</div>
+            <div class="prog-row"><div class="prog-label"><span>Mechanical / Aerospace Engineering</span><span>Very High</span></div><div class="prog-bar"><div class="prog-fill" style="width:92%;"></div></div></div>
+            <div class="prog-row"><div class="prog-label"><span>Manufacturing Engineering</span><span>High</span></div><div class="prog-bar"><div class="prog-fill" style="width:80%;"></div></div></div>
+            <div class="prog-row"><div class="prog-label"><span>Systems Engineering</span><span>High</span></div><div class="prog-bar"><div class="prog-fill" style="width:75%;"></div></div></div>
+            <div class="prog-row"><div class="prog-label"><span>Quality / AS9100</span><span>High</span></div><div class="prog-bar"><div class="prog-fill" style="width:70%;"></div></div></div>
+            <div class="prog-row"><div class="prog-label"><span>Materials / Metallurgy Engineering</span><span>Moderate</span></div><div class="prog-bar"><div class="prog-fill" style="width:60%;"></div></div></div>
+            <div class="prog-row"><div class="prog-label"><span>Supply Chain Engineering</span><span>Moderate</span></div><div class="prog-bar"><div class="prog-fill" style="width:55%;"></div></div></div>
+            <div class="prog-row"><div class="prog-label"><span>Data / AI/ML Engineering (JFWTC)</span><span>Growing</span></div><div class="prog-bar"><div class="prog-fill" style="width:45%;background:#e65100;"></div></div></div>
+        </div>
+    </div>
+
+    <!-- Development Programs -->
+    <div class="card" style="margin-bottom:20px;">
+        <div class="card-title">GE Aerospace Development Programs (Entry Points for Early Career Pipeline)</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;font-size:12px;">
+            <div style="padding:12px;background:#e3f2fd;border-radius:8px;">
+                <strong style="color:#0055b3;">Edison Engineering Development Program (EEDP)</strong><br/>
+                <span style="color:#555;">Mechanical, Aerospace, Materials Engineering rotational. 2025 cohort active. Build pipeline relationship through EEDP program leads.</span>
+            </div>
+            <div style="padding:12px;background:#e8f5e9;border-radius:8px;">
+                <strong style="color:#1b5e20;">Manufacturing Engineering Dev Program (MEDP)</strong><br/>
+                <span style="color:#555;">2-year, two 1-year rotations. Manufacturing processes, assembly. Wilmington NC and Madisonville KY participation.</span>
+            </div>
+            <div style="padding:12px;background:#fff8e1;border-radius:8px;">
+                <strong style="color:#e65100;">JFWTC India Graduate Programs</strong><br/>
+                <span style="color:#555;">Entry-level engineering, product support, data analytics. Bangalore-based. Cyient talent network overlap is direct.</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ====== COMPETITIVE INTEL ====== -->
+<div id="competitive" class="section">
+    <div class="section-title">⚔️ Competitive Intelligence</div>
+
+    <!-- VERIFY GLOBAL WATCH -->
+    <div style="background:linear-gradient(135deg,#b71c1c,#c62828);border-radius:12px;padding:16px 20px;margin-bottom:22px;color:#fff;">
+        <div style="font-size:13px;font-weight:700;margin-bottom:6px;">👁️ COMPETITOR WATCH — Verify Global (verifyglobal.com)</div>
+        <div style="font-size:12px;line-height:1.7;opacity:.93;">
+            Verify Global (HQ: Costa Mesa, CA) is a specialist in <strong>Supplier Quality Management</strong> — FAI (AS9102), PPAP, AS9145 compliance audits, capability assessments, and corrective action management. They serve 400+ customers at 7,000+ supplier locations across 50 countries with 8,000+ field resources. They are a direct competitor in the <strong>supplier quality / inspection</strong> space at GE Aerospace, particularly for LEAP/GE90 MRO supply chain quality work. Monitor their presence at GE's Evendale and Wilmington NC sites.
+        </div>
+    </div>
+
+    <div class="grid-2">
+        <div class="card">
+            <div class="card-title">Verify Global — Profile</div>
+            <table style="width:100%;font-size:12px;border-collapse:collapse;">
+                <tr style="border-bottom:1px solid #eee;"><td style="padding:7px 0;color:#666;width:40%;">Headquarters</td><td style="padding:7px 0;font-weight:600;">Costa Mesa, CA · Irving TX · Montréal · UK</td></tr>
+                <tr style="border-bottom:1px solid #eee;"><td style="padding:7px 0;color:#666;">Specialization</td><td style="padding:7px 0;font-weight:600;">Supplier Quality Management, FAI/AS9102, PPAP, AS9145</td></tr>
+                <tr style="border-bottom:1px solid #eee;"><td style="padding:7px 0;color:#666;">Field Resources</td><td style="padding:7px 0;font-weight:600;">8,000+ globally (contract/field personnel)</td></tr>
+                <tr style="border-bottom:1px solid #eee;"><td style="padding:7px 0;color:#666;">Customer Base</td><td style="padding:7px 0;font-weight:600;">400+ customers · 7,000+ supplier locations · 50 countries</td></tr>
+                <tr style="border-bottom:1px solid #eee;"><td style="padding:7px 0;color:#666;">India Presence</td><td style="padding:7px 0;font-weight:600;">No dedicated India office confirmed</td></tr>
+                <tr style="border-bottom:1px solid #eee;"><td style="padding:7px 0;color:#666;">Est. Headcount</td><td style="padding:7px 0;font-weight:600;">~1,200 direct employees (estimate)</td></tr>
+                <tr><td style="padding:7px 0;color:#666;">Overlap Risk</td><td style="padding:7px 0;"><span style="background:#fdecea;color:#c62828;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">HIGH — Supplier Quality</span></td></tr>
+            </table>
+        </div>
+        <div class="card">
+            <div class="card-title">Cyient vs. Verify Global — Differentiation</div>
+            <div style="font-size:12px;line-height:1.8;">
+                <div style="margin-bottom:10px;padding:8px;background:#e8f5e9;border-radius:6px;border-left:3px solid #1b5e20;">
+                    <strong style="color:#1b5e20;">✅ Cyient Advantages</strong><br/>
+                    • End-to-end engineering (design → cert → MRO) vs. Verify's quality-only scope<br/>
+                    • India delivery infrastructure (Hyderabad/Bangalore) — Verify has no India office<br/>
+                    • Deep engineering pedigree (CAD/CAE, systems, SW) vs. Verify's inspection-only model<br/>
+                    • Can embed engineers for long-term program work, not just audits
+                </div>
+                <div style="padding:8px;background:#fff3e0;border-radius:6px;border-left:3px solid #e65100;">
+                    <strong style="color:#e65100;">⚠️ Watch Areas</strong><br/>
+                    • Verify's AS9102 FAI and PPAP expertise is very specialized — Cyient must match or exceed<br/>
+                    • Verify's 8,000 field resources = rapid deployment at scale for spot inspections<br/>
+                    • If GE is comparing supplier quality vendors, Verify will be on the shortlist
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Other Competitors -->
+    <div class="card" style="margin-top:4px;">
+        <div class="card-title">Other Engineering Services Competitors at GE Aerospace</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;font-size:12px;">
+            <div style="padding:10px;background:#f5f5f5;border-radius:6px;">
+                <strong>HCL Technologies</strong><br/>
+                <span style="color:#555;">Engineering R&D, PLM, digital engineering. Large GE account historically. Compete on India delivery scale.</span>
+            </div>
+            <div style="padding:10px;background:#f5f5f5;border-radius:6px;">
+                <strong>EPAM / Infosys Engineering</strong><br/>
+                <span style="color:#555;">Digital/software engineering. JFWTC SW modernization. Compete on tech depth.</span>
+            </div>
+            <div style="padding:10px;background:#f5f5f5;border-radius:6px;">
+                <strong>Alten / Akka / Bertrandt</strong><br/>
+                <span style="color:#555;">European engineering services. Lynn MA / Evendale on-site staffing. Compete on US presence.</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ====== PROGRAMS ====== -->
+<div id="programs" class="section">
+    <div class="section-title">🔧 Engine Programs — GE Aerospace</div>
+    <div class="grid-2">
+        <div class="card">
+            <div class="card-title">Commercial Engine Programs</div>
+            <table style="width:100%;font-size:12px;border-collapse:collapse;">
+                <thead><tr style="background:#f5f5f5;"><th style="padding:8px;text-align:left;border-bottom:2px solid #ddd;">Engine</th><th style="padding:8px;text-align:left;">Platform</th><th style="padding:8px;text-align:left;">Status</th></tr></thead>
+                <tbody>
+                    <tr style="border-bottom:1px solid #eee;"><td style="padding:8px;font-weight:600;">LEAP-1A</td><td style="padding:8px;">Airbus A320neo family</td><td style="padding:8px;"><span style="background:#fdecea;color:#c62828;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700;">🔥 RAMP</span></td></tr>
+                    <tr style="border-bottom:1px solid #eee;"><td style="padding:8px;font-weight:600;">LEAP-1B</td><td style="padding:8px;">Boeing 737 MAX</td><td style="padding:8px;"><span style="background:#fdecea;color:#c62828;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700;">🔥 RAMP</span></td></tr>
+                    <tr style="border-bottom:1px solid #eee;"><td style="padding:8px;font-weight:600;">LEAP-1C</td><td style="padding:8px;">COMAC C919</td><td style="padding:8px;"><span style="background:#e3f2fd;color:#0055b3;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700;">GROWING</span></td></tr>
+                    <tr style="border-bottom:1px solid #eee;"><td style="padding:8px;font-weight:600;">GEnx-1B</td><td style="padding:8px;">Boeing 787 Dreamliner</td><td style="padding:8px;"><span style="background:#e8f5e9;color:#1b5e20;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700;">STRONG</span></td></tr>
+                    <tr style="border-bottom:1px solid #eee;"><td style="padding:8px;font-weight:600;">GEnx-2B</td><td style="padding:8px;">Boeing 747-8</td><td style="padding:8px;"><span style="background:#f5f5f5;color:#666;padding:2px 7px;border-radius:8px;font-size:10px;">STABLE</span></td></tr>
+                    <tr style="border-bottom:1px solid #eee;"><td style="padding:8px;font-weight:600;">GE9X</td><td style="padding:8px;">Boeing 777X</td><td style="padding:8px;"><span style="background:#fff3e0;color:#e65100;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700;">CERT SPRINT</span></td></tr>
+                    <tr><td style="padding:8px;font-weight:600;">GE90</td><td style="padding:8px;">Boeing 777 Classic</td><td style="padding:8px;"><span style="background:#e8f5e9;color:#1b5e20;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700;">MRO WAVE</span></td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="card">
+            <div class="card-title">Military &amp; Future Engine Programs</div>
+            <table style="width:100%;font-size:12px;border-collapse:collapse;">
+                <thead><tr style="background:#f5f5f5;"><th style="padding:8px;text-align:left;border-bottom:2px solid #ddd;">Engine</th><th style="padding:8px;text-align:left;">Platform</th><th style="padding:8px;text-align:left;">Status</th></tr></thead>
+                <tbody>
+                    <tr style="border-bottom:1px solid #eee;"><td style="padding:8px;font-weight:600;">T408</td><td style="padding:8px;">CH-53K King Stallion</td><td style="padding:8px;"><span style="background:#fdecea;color:#c62828;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700;">🔥 $1.4B 2026</span></td></tr>
+                    <tr style="border-bottom:1px solid #eee;"><td style="padding:8px;font-weight:600;">T700</td><td style="padding:8px;">AH-64 Apache / UH-60 Black Hawk</td><td style="padding:8px;"><span style="background:#e8f5e9;color:#1b5e20;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700;">IDIQ 2029</span></td></tr>
+                    <tr style="border-bottom:1px solid #eee;"><td style="padding:8px;font-weight:600;">XA100</td><td style="padding:8px;">F-35 (Adaptive Cycle — AETP)</td><td style="padding:8px;"><span style="background:#f3e5f5;color:#6a1b9a;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700;">DEVELOPMENT</span></td></tr>
+                    <tr style="border-bottom:1px solid #eee;"><td style="padding:8px;font-weight:600;">CFM RISE</td><td style="padding:8px;">Next-gen narrowbody (post-2035)</td><td style="padding:8px;"><span style="background:#eceff1;color:#37474f;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700;">MID-2030s</span></td></tr>
+                    <tr><td style="padding:8px;font-weight:600;">Northstar Acquisition</td><td style="padding:8px;">Helicopter gears/transmissions (Avio Aero)</td><td style="padding:8px;"><span style="background:#fff3e0;color:#e65100;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700;">INTEGRATING</span></td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ====== SITES & DIVISIONS ====== -->
+<div id="divisions" class="section">
+    <div class="section-title">🏭 Sites &amp; Divisions — GE Aerospace</div>
+    <div class="grid-2">
+        <div class="card" style="border-top-color:#0055b3;">
+            <div class="card-title" style="color:#0055b3;">📍 Evendale OH (Cincinnati) — HQ</div>
+            <div style="font-size:12px;line-height:1.8;color:#444;">
+                <strong>~9,000 employees</strong> across SW Ohio / Northern KY corridor<br/>
+                Primary function: Commercial engine design, engineering, manufacturing, and test<br/>
+                <strong>Programs:</strong> LEAP, GE9X, GEnx, GE90, CFM RISE<br/>
+                Notable: 747 flying test laboratory at CVG airport<br/>
+                <span class="tag tag-accent">CES HQ</span><span class="tag tag-accent">1,000+ open roles total GE AE</span>
+            </div>
+        </div>
+        <div class="card" style="border-top-color:#6a1b9a;">
+            <div class="card-title" style="color:#6a1b9a;">📍 Lynn MA — Military Engines</div>
+            <div style="font-size:12px;line-height:1.8;color:#444;">
+                130+ year history · Home of first U.S. jet engine (1942)<br/>
+                <strong>Programs:</strong> T408 (CH-53K), T700 (AH-64/UH-60), military engine assembly &amp; test<br/>
+                DoD-recognized facility · Critical defense supplier<br/>
+                <span class="tag tag-accent">$1.4B T408 contract 2026</span><span class="tag tag-accent">IDIQ T700 through 2029</span>
+            </div>
+        </div>
+        <div class="card" style="border-top-color:#00695c;">
+            <div class="card-title" style="color:#00695c;">📍 Wilmington NC — Manufacturing</div>
+            <div style="font-size:12px;line-height:1.8;color:#444;">
+                600,000 sq ft facility · 300+ CNC machines<br/>
+                <strong>Function:</strong> High-precision rotating parts for commercial and military engines<br/>
+                <strong>Investment:</strong> $60M modernization underway (2024–2026)<br/>
+                <span class="tag tag-accent">Blades, discs, shafts</span><span class="tag tag-accent">LEAP + GE90 + T700 parts</span>
+            </div>
+        </div>
+        <div class="card" style="border-top-color:#e65100;">
+            <div class="card-title" style="color:#e65100;">📍 Bangalore, India — JFWTC</div>
+            <div style="font-size:12px;line-height:1.8;color:#444;">
+                John F. Welch Technology Centre · Est. 2000 · 25th anniversary 2025<br/>
+                <strong>Capabilities:</strong> Design analysis, CFD, AI/ML engine optimization, FAA compliance support<br/>
+                <strong>Output:</strong> 1,000+ patents contributed across LEAP, GE9X, GEnx, GE90<br/>
+                <span class="tag tag-accent">Same city as Cyient HQ</span><span class="tag tag-accent">careers.geaerospace.com/bengaluru</span>
+            </div>
+        </div>
+        <div class="card" style="border-top-color:#5d4037;">
+            <div class="card-title" style="color:#5d4037;">📍 Madisonville KY — Component Mfg</div>
+            <div style="font-size:12px;line-height:1.8;color:#444;">
+                Engine component production — T700 turboshaft parts<br/>
+                Manufacturing engineering, quality, CNC operations<br/>
+                Supports Lynn MA military engine assembly<br/>
+                <span class="tag tag-accent">T700 production support</span>
+            </div>
+        </div>
+        <div class="card" style="border-top-color:#37474f;">
+            <div class="card-title" style="color:#37474f;">🌐 Global MRO Network</div>
+            <div style="font-size:12px;line-height:1.8;color:#444;">
+                $500M+ LEAP MRO expansion: Brazil, Malaysia, Dubai, Dallas, Asia-Pacific<br/>
+                $1B+ total MRO network investment through 2028<br/>
+                GE90 second-shop-visit wave: visits 60–70% heavier than first<br/>
+                CFM56: 2,300–2,400 shop visits/year through 2028<br/>
+                <span class="tag tag-accent">70% of GE revenue from aftermarket</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ====== REFERENCE ====== -->
+<div id="reference" class="section">
+    <div class="section-title">📋 Cyient Proof Points for GE Aerospace</div>
+    <div class="grid-2">
+        <div class="card">
+            <div class="card-title">Engineering Credentials</div>
+            <div style="font-size:12px;line-height:1.9;color:#444;">
+                <span class="tag tag-accent">AS9100 Certified</span>
+                <span class="tag tag-accent">NADCAP Aerospace</span>
+                <span class="tag tag-accent">DO-178C Practice</span>
+                <span class="tag tag-accent">DO-254 Practice</span>
+                <span class="tag tag-accent">S1000D Tech Pubs</span>
+                <span class="tag tag-accent">ATA iSpec 2200</span>
+                <span class="tag tag-accent">CATIA V5/V6</span>
+                <span class="tag tag-accent">ANSYS / Nastran FEA</span>
+                <span class="tag tag-accent">Fluent / StarCCM+ CFD</span>
+                <span class="tag tag-accent">MBSE / SysML</span>
+                <span class="tag tag-accent">AS9102 FAI</span>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-title">Competitive Positioning vs. Verify Global</div>
+            <div style="font-size:12px;line-height:1.8;color:#444;">
+                <div style="background:#e8f5e9;padding:10px;border-radius:6px;margin-bottom:10px;border-left:3px solid #1b5e20;">
+                    <strong style="color:#1b5e20;">Cyient wins when:</strong> Customer needs full engineering scope (design → analysis → cert → MRO docs) · Customer values India co-location (Bangalore / Hyderabad) · Long-term program partnership vs. spot quality audits
+                </div>
+                <div style="background:#fff3e0;padding:10px;border-radius:6px;border-left:3px solid #e65100;">
+                    <strong style="color:#e65100;">Verify Global wins when:</strong> Customer needs rapid FAI/PPAP spot inspections at scale · 8,000 field resources allow faster mobilization · Purely supplier quality scope with no engineering depth required
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</div><!-- end main-content -->
+</div><!-- end container -->
+
+<script>
+function switchSection(event, sectionId) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+    const el = document.getElementById(sectionId);
+    if (el) el.classList.add('active');
+    if (event && event.currentTarget) event.currentTarget.classList.add('active');
+}
+</script>
+</body>
+</html>
